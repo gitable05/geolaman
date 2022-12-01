@@ -5,12 +5,29 @@ import os
 
 class point:
     def __init__(self,label,coordinate,mesh_size):
+        '''
+        Attributes:
+        label: string: label of point
+        coordinate: list of int/float: coordiante [x,y] of point
+        mesh_size: int/float: length set between the point as
+                               mesh node with other neighboring mesh nodes
+        '''
         self.label = label
-        self.coordinate = coordinate
-        self.mesh_size = mesh_size
+        self.coordinate = coordinate 
+        self.mesh_size = mesh_size 
 
 class boundary:
     def __init__(self,label,points,zero_displacement_at=False):
+        '''
+        Attributes:
+        label: string: label of boundary
+        points: list of geolaman.entities.point: points making up the boundary
+        mark: int: mark of boundary - for mesh processing
+        zero_displacement_at: string: indicates displacement boundary condition;
+                                      "x": zero displacement at x direction
+                                      "y": zero displacement at y direction
+                                      "xy": zero displacement at both directions
+        '''
         self.label = label
         self.points = points
         self.mark = None
