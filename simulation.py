@@ -560,7 +560,7 @@ class system:
             for marker in self.markers:
                 df_out.loc[(df_out.label==marker.label) & (df_out.t == 0), "x0"] = marker.coordinate[0]
                 df_out.loc[(df_out.label==marker.label) & (df_out.t == 0), "y0"] = marker.coordinate[0]
-            print(df_out)
+            #print(df_out)
             self.markers_dataframe = df_out
             self.markers_dataframe.to_csv(os.path.join(self.analysis_path,"markers_data.csv"))
 

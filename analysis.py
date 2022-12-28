@@ -10,6 +10,7 @@ class time_conversion:
 
 def markers_plot(markers_dataframe,save_in_path,pdf=False,time_unit="s"):
 
+    print("Plotting marker displacements...")
     fig = plt.figure()
     ax = fig.add_subplot(111)
     times = list(markers_dataframe.t.unique())

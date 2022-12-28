@@ -8,7 +8,7 @@ class point:
         '''
         Attributes:
         label: string: label of point
-        coordinate: list of int/float: coordiante [x,y] of point
+        coordinate: list of int/float: coordinate [x,y] of point
         mesh_size: int/float: length set between the point as
                                mesh node with other neighboring mesh nodes
         '''
@@ -36,6 +36,20 @@ class boundary:
 class region:
     def __init__(self,label,density,Young_modulus,Poisson_ratio,
                  cohesion,friction_angle,conductivity,porosity,boundary_points):
+        '''
+        Attributes:
+        label: string: label of region
+        density: int/float: material density
+        Young_modulus: int/float: material Young modulus
+        Poisson_ratio: int/float: material Poisson ratio
+        cohesion: int/float: material cohesion
+        friction_angle: int/float: material friction angle in radians
+        conductivity: int/float: material hydraulic conductivity (assumed istropic)
+        porosity: float: material porosity
+        boundary_points: list of geolaman.entities.point: boundary points of the region
+        mark: int : mark of region - for mesh processing
+        '''
+
         self.label = label
         self.density = density
         self.Young_modulus = Young_modulus                              #elastic model
@@ -49,6 +63,15 @@ class region:
 
 class marker:
     def __init__(self,label,point_):
+        '''
+        Attributes:
+        label: string: label of marker
+        coordinate: list of int/float: coordinate [x,y] where marker is
+                                    initially at
+        displacement_data: dict: stores displacement data with time/steps 
+                                as dict.keys() and displacement as dict.values()
+        '''
+
         self.label = label
         if isinstance(point_,point):
             point_ = point_.coordinate
@@ -65,6 +88,15 @@ class marker:
 
 class column:
     def __init__(self,label,point_,length,segment_length):
+        '''
+        Attributes:
+        label: string: label of marker
+        point: list of int/float: coordinate [x,y] where topmost 
+                                node is initially at
+        length: int/float: length of column
+        segment_length: int/float: length of segments
+        '''
+
         self.label = label
         if isinstance(point_,point):
             point_ = point_.coordinate
@@ -97,6 +129,12 @@ class column:
 
 class slip_surface:
     def __init__(self,label,points,angles,arc_params):
+        '''
+        label: string: label of the slip_surface
+        points: list of points coordinates
+        angles: list of angles tangential to the points
+        arc_params: parameters of arc = (a,b,width,radius)
+        '''
         self.label = label
         self.points = np.zeros((3,len(points)))
         self.points[0] = np.transpose(points)[0]
@@ -184,7 +222,14 @@ def find_closest_to_value(value,array_to_compare):
     return match_idx
 
 class vector_between:
+    '''
+    Creates a vector from point a to point b
+    '''
     def __init__(self,a,b):
+        '''
+        vector: list of int/float: [x-component,y-component]
+        magnitude: float: magnitude of vector
+        '''
         if isinstance(a,point):
             a = a.coordinate
         if isinstance(b,point):
@@ -192,9 +237,9 @@ class vector_between:
         self.vector = [b[0]-a[0],b[1]-a[1]]
         self.magnitude = np.sqrt((b[0]-a[0])**2+(b[1]-a[0])**2)
 
-def create_arc_points(a,b,r,dx):
+def create_arc_points(a,b,dx,r):
     '''
-    Create a circular arc from a to b with radius r subdivided
+    Creates the points of a circular arc from a to b with radius r subdivided
     by (vertical) slices of width dx. The points are midpoints of the slices.
     '''
 
