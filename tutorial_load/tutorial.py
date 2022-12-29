@@ -1,9 +1,12 @@
 '''
 This tutorial documents simulation of a simple slope 
-of a single material acted upon by a surface load.
+of a single material acted upon by a surface load or volume force.
 We use standard units.
 '''
 
+'''
+We import the geolaman library
+'''
 from geolaman.entities import *
 from geolaman.simulation import *
 from geolaman.analysis import *
@@ -18,7 +21,7 @@ Note: points must be unique in label and in coordinates
 p0 = point("p0",[0,0],0.5)
 p1 = point("p1",[20,0],0.5)
 p2 = point("p2",[40,-15],2.)
-p3 = point("p3",[50,-15],5.)
+p3 = point("p3",[50,-15],2.)
 p4 = point("p4",[50,-20],5.)
 p5 = point("p5",[0,-20],5.)
 
@@ -28,7 +31,7 @@ We do this with the geolaman.entities.boundary class.
 '''
 
 left_boundary = boundary("left_boundary",[p5,p0],zero_displacement_at="x")
-bottom_boundary = boundary("bottom_boundary",[p4,p5],zero_displacement_at="y")
+bottom_boundary = boundary("bottom_boundary",[p4,p5],zero_displacement_at="xy")
 right_boundary = boundary("right_boundary",[p3,p4],zero_displacement_at="x")
 surface = boundary("surface",[p1,p2,p3])
 load_surface = boundary("load_surface",[p0,p1])
@@ -39,8 +42,8 @@ the geolaman.entities.region class. Here, we define the material parameters.
 '''
 
 material = region(label="material",
-        density = 19.383e3/9.8,
-        Young_modulus = 2e7,
+        density = 1900,
+        Young_modulus = 2e5,
         Poisson_ratio = 0.49,
         cohesion = 0,
         friction_angle = np.radians(31),
@@ -55,6 +58,7 @@ We instantiate a geolaman.simulation.system class.
 We then invoke the function create_mesh() to create the mesh.
 '''
 system = system()
+system.no_print = False #to print out stages of the mesh creation and simulation
 system.regions = [material]
 system.boundaries = [left_boundary,bottom_boundary,right_boundary,surface,load_surface]
 system.create_mesh()
@@ -80,28 +84,37 @@ marker_2 = marker("M2",q)      #marker M2 created at q
 system.markers = [marker_1,marker_2] #added to system
 
 #columns
-column_1 = column("C1",p1,10,1)   #column C1 at p1 with length=10, segment_length=1
+column_1 = column("C1",q,10,1)   #column C1 at p1 with length=10, segment_length=1
 column_2 = column("C2",p2,4,0.5)  #column C2 at p2 with length=4, segment_length=0.5
 system.columns = [column_1,column_2] #added to system
 
 #plot the markers and columns against the slope --> /analysis/markers_columns_plot.png
 system.plot(markers=True,columns=True,file_name="markers_columns_plot") 
 
+
 R = vector_between([10,0],p2).magnitude                       #radius
 dx = 1                                                        #width of slices
 arc_params = ([10,0],p2,dx,R)                                 #define arc parameters
-points, angles = create_arc_points([10,0],p2,dx,R)            #creates points and angles
+points, angles = create_arc_points(*arc_params)               #creates points and angles
 slip_surface = slip_surface("S1",points,angles,arc_params)    #create the slip surface "S1" entity 
 system.slip_surfaces = [slip_surface]                         #added to system          
 system.slip_surfaces_plot(file_name="slip_surface_plot")
 
-'''
-The system is now set. We now apply a load on load_surface.
-'''
-system.steps = [0,1,2]                                        #single step t=1 (t=0 is reserverd for initialization)
-system.surface_force = [(0,0),(0,-10000),(0,-10000)]          #downward load
-system.surface_force_at = load_surface                        #define where the load will act
-system.evolve()                                               #evolve the system
+
+#SURFACE FORCE
+#The system is now set. We now apply the load on load_surface.
+system.steps = np.linspace(0,10,10,endpoint=False)                         #steps of simulations
+system.surface_force =  [(0,-10000) for t in system.steps]                 #downward load per step
+system.surface_force_at = load_surface                                     #define where the load will act
+system.evolve()                                                            #evolve the system
+
+
+#VOLUME FORCE
+#The system is now set. We now apply the volumetric force.
+'''system.steps = np.linspace(0,10,10,endpoint=False) 
+system.volume_force = [(0,-10000) for t in system.steps]
+system.evolve()'''
+
 
 '''
 During the evolution, the displacements in the columns and markers
@@ -118,3 +131,5 @@ columns and markers, and stresses in the slip surface
 #For immediate plotting:
 markers_plot(system.markers_dataframe,system.analysis_path)
 columns_plot(system.columns_dataframe,system.analysis_path)
+#factor_of_safety_plot(system.slip_surfaces_dataframe,system.analysis_path)
+#slip_surfaces_stresses_plot(system.slip_surfaces_dataframe,system.analysis_path)

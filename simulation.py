@@ -17,7 +17,6 @@ import ufl
 import geolaman.entities as geo_ent
 from geolaman.analysis import factor_of_safety
 import matplotlib.pyplot as plt
-import matplotlib as mpl
 
 class system:
 
