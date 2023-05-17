@@ -179,7 +179,7 @@ def create_slip_surfaces(arcs,surfaces,radius_factor=1,x_only=False):
             check_points = True #check if all points are below surface
             while check_points:
                 has_point_above = False
-                points, angles = create_arc_points(ql,qr,radius,arc[2])
+                points, angles = create_arc_points(ql,qr,arc[2],radius)
                 for p in points:
                     idx = find_closest_to_value(p[0],surface_points_x)
                     y = get_colinear_y(p[0],surface_points[idx[0]],surface_points[idx[1]]) if type(idx) is tuple else surface_points[idx][1]
@@ -194,7 +194,7 @@ def create_slip_surfaces(arcs,surfaces,radius_factor=1,x_only=False):
         else:
             ql,qr = arc[0],arc[1]
             radius = arc[3]
-            points, angles = create_arc_points(ql,qr,radius,arc[2])
+            points, angles = create_arc_points(ql,qr,arc[2],radius)
 
         arc_params = (ql,qr,arc[2],radius)
         slip_surfaces.append(slip_surface(label,points,angles,arc_params))
@@ -273,7 +273,7 @@ def create_arc_points(a,b,dx,r):
             angle = np.arctan2(h,l)
             points.append([xs_mid[i],y])
             angles.append(angle)
-        result = points,angles
+        result = points, angles
     return result
 
 def print_points(points,ends_only=False):

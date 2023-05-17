@@ -39,7 +39,7 @@ class system:
         self.hydraulic_parameters = {"porosity":0,"dissipation_time":0}
         self.excess_pore_pressure_value = 0.
 
-        self.g = 9.8
+        self.g = 9.81
         self.water_density = 1000
         self.water_bulk_moulus = 1.96e9
 
@@ -412,7 +412,7 @@ class system:
             self.project(self.conductivity*rho_w*g,K)
             a += -ufl.inner(p*ufl.Identity(u.geometric_dimension()),self.epsilon(v))*ufl.dx
             a += ufl.dot(self.conductivity*ufl.grad(p),ufl.grad(q))*ufl.dx
-            L += ufl.div(K)*q*ufl.dx
+            L += -ufl.div(K)*q*ufl.dx
 
         problem = LinearProblem(a,L,bcs,petsc_options={"ksp_type":"preonly","pc_type":"lu"})
         up_h = problem.solve()
@@ -440,15 +440,16 @@ class system:
 
             self.xdmf_u.close()
             self.xdmf_sigma.close()
-            self.xdmf_p.close()
+            if self.pore_pressure:
+                self.xdmf_p.close()
             return
 
         if not self.no_print: print("Running simulation with external trigger...")
         #Main simulation with external trigger
         u_prev = Function(V)
-        L = ufl.inner(self.sigma(u_prev),self.epsilon(v))*ufl.dx
+        #L = ufl.inner(self.sigma(u_prev),self.epsilon(v))*ufl.dx
         '''NOT L += ufl.inner(self.sigma(u_prev),self.epsilon(v))*ufl.dx
-           as the initial stresses are ue to gravity.
+           as the initial stresses are due to gravity.
            Doing so with u_prev = uh continuously deforms mesh even without
            surface/volume force.
         '''
@@ -457,15 +458,24 @@ class system:
             p_excess = Function(X)
             p_excess_prev = Function(X)
             p_prev = Function(X)
-            a += ufl.inner(p*ufl.Identity(u.geometric_dimension()),self.epsilon(v))*ufl.dx
-            L += ufl.inner(p_excess*ufl.Identity(u.geometric_dimension()),self.epsilon(v))*ufl.dx
 
-            a += ufl.div(u)*q*ufl.dx
-            a += self.stiffness_inv*p*q*ufl.dx
-            L += self.stiffness_inv*p_excess*q*ufl.dx
-            L += ufl.div(u_prev)*q*ufl.dx
-            L += self.stiffness_inv*p_prev*q*ufl.dx
-            L += self.stiffness_inv*p_excess_prev*q*ufl.dx
+            '''
+            For the rainfall simulation, we consider two states: with u,p,p_excess
+            for the state to be solved, and u_prev,p_prev,p_excess_prev for the previous
+            state. For the solid momentum, we are solving Div[sigma(u-u_prev) - p_excess] = 0.
+            Note sigma(u_prev) already takes consideration
+            '''
+
+            #a += ufl.inner(p*ufl.Identity(u.geometric_dimension()),self.epsilon(v))*ufl.dx            
+            #a += ufl.div(u)*q*ufl.dx
+            #a += self.stiffness_inv*p*q*ufl.dx
+
+            L += ufl.inner(p_excess*ufl.Identity(u.geometric_dimension()),self.epsilon(v))*ufl.dx
+            #L += ufl.div(u_prev)*q*ufl.dx
+            #L += self.stiffness_inv*p_prev*q*ufl.dx
+            #L += self.stiffness_inv*p_excess_prev*q*ufl.dx
+            #L += -self.stiffness_inv*p_excess*q*ufl.dx
+ 
 
         if self.surface_force is not None:
             ds = ufl.Measure("ds",domain=self.mesh,subdomain_data=self.mesh_boundaries)
@@ -480,7 +490,7 @@ class system:
             P_dict = dict(zip(self.steps,self.precipitation))
             dt = self.steps[1]-self.steps[0]
             P_factor = 0
-            gamma = self.water_density*self.g
+            gamma = self.water_density*self.g 
             self.density = self.density*(1-self.hydraulic_parameters["porosity"])+self.hydraulic_parameters["porosity"]*self.water_density
             self.gwt_fluctuations = []
 

@@ -142,25 +142,34 @@ def precipitation_plot(precipitation_dataframe,save_in_path,gwt=False,pdf=False,
     plt.savefig(os.path.join(save_in_path,"precipitation_plot"+filetype))
     plt.close()
 
-def factor_of_safety_at_step(slip_surfaces_dataframe):
+def factor_of_safety_at_step(slip_surfaces_labels_to_params,slip_surfaces_dataframe,print_label=False):
 
     Fs_dict = {}
     slip_surfaces = slip_surfaces_dataframe.label.unique()
     for slip_surface in slip_surfaces:
+        if print_label:
+            print(slip_surface)
         df = slip_surfaces_dataframe[slip_surfaces_dataframe.label==slip_surface].copy()
         df.friction_angle = df.friction_angle.apply(lambda x: np.tan(x))
         df["normal_stress_eff"] = df.normal_stress-df.pore_pressure
         df = df.drop(["normal_stress","pore_pressure"],axis=1)
         df["cohesion"] = df[["slice","cohesion"]].groupby("slice")["cohesion"].transform("first")
         df["friction_angle"] = df[["slice","friction_angle"]].groupby("slice")["friction_angle"].transform("first")
-        df.loc[df.normal_stress_eff > 0,"shear_strength"] = df.cohesion + df.normal_stress_eff*df.friction_angle
+        df.loc[df.normal_stress_eff < 0,"shear_strength"] = df.cohesion - df.normal_stress_eff*df.friction_angle
         df["shear_strength"] = df["shear_strength"]*np.sign(df["shear_stress"])
+        
+        angles = slip_surfaces_labels_to_params[slip_surface].angles
+        df["angle"] = angles
         df = df[df.shear_strength.notnull()]
-        Fs_dict.update({slip_surface:df.shear_strength.sum()/df.shear_stress.sum()})
+
+        width = slip_surfaces_labels_to_params[slip_surface].arc_params[2]
+        df["moment"] = width*df.shear_stress/np.cos(df.angle)
+        df["max_moment"] = width*df.shear_strength/np.cos(df.angle)
+        Fs_dict.update({slip_surface:df.max_moment.sum()/df.moment.sum()})
 
     return pd.DataFrame.from_dict({"label":list(Fs_dict.keys()),"Fs":list(Fs_dict.values())})
 
-def factor_of_safety_evolution(slip_surfaces_dataframe):
+def factor_of_safety_evolution(slip_surfaces_labels_to_params,slip_surfaces_dataframe):
 
     df = slip_surfaces_dataframe
     df["cohesion"] = df[["slice","cohesion"]].groupby("slice")["cohesion"].transform("first")
@@ -170,18 +179,18 @@ def factor_of_safety_evolution(slip_surfaces_dataframe):
     Fs_df_out = pd.DataFrame(columns=["label","t","Fs"])
     times = df.t.unique()
     for t in times:
-        Fs_df = factor_of_safety_at_step(df[df.t==t])
+        Fs_df = factor_of_safety_at_step(slip_surfaces_labels_to_params,df[df.t==t])
         Fs_df["t"] = t
         Fs_df_out = pd.concat([Fs_df_out,Fs_df],ignore_index=True)
     return Fs_df_out
 
-def factor_of_safety_plot(slip_surfaces_dataframe,save_in_path,ylim_max=None,pdf=False,time_unit="s"):
+def factor_of_safety_plot(slip_surfaces_labels_to_params,slip_surfaces_dataframe,save_in_path,ylim_max=None,pdf=False,time_unit="s"):
 
     print("Plotting factor-of-safety of slip surfaces ...")
     fig = plt.figure()
     ax = fig.add_subplot(111)
 
-    Fs_df = factor_of_safety_evolution(slip_surfaces_dataframe)
+    Fs_df = factor_of_safety_evolution(slip_surfaces_labels_to_params,slip_surfaces_dataframe)
     if time_unit != "s":
         Fs_df["t"] = Fs_df["t"].apply(lambda t: t*time_conversion().factor[time_unit])
 
@@ -239,7 +248,7 @@ def slip_surfaces_stresses_plot(slip_surfaces_dataframe,save_in_path,pdf=False,t
             cohesion = df_s[df_s.t == 0]["cohesion"].iloc[0]
             friction_angle = df_s[df_s.t == 0]["friction_angle"].iloc[0]
             df_s["normal_stress_eff"] = (df_s.normal_stress-df_s.pore_pressure)
-            df_s.loc[df_s.normal_stress_eff > 0, "shear_strength"] = cohesion+df_s.normal_stress_eff*np.tan(friction_angle)
+            df_s.loc[df_s.normal_stress_eff < 0, "shear_strength"] = cohesion-df_s.normal_stress_eff*np.tan(friction_angle)
             df_s["shear_strength"] = df_s["shear_strength"]*np.sign(df_s["shear_stress"])
             ax1.plot(times,list(df_s.normal_stress/1000),c=colors[slice])
             ax2.plot(times,list(df_s.pore_pressure/1000),c=colors[slice])
